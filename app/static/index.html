@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Stock AI Agent</title>
+    <style>
+        body {
+            font-family: Arial;
+            max-width: 800px;
+            margin: 40px auto;
+        }
+        input, button {
+            padding: 10px;
+            font-size: 16px;
+        }
+        #response {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ccc;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+
+<h2>📈 Stock AI Agent</h2>
+
+<input type="text" id="query" placeholder="Ask about stocks..." size="50"/>
+<button onclick="ask()">Ask</button>
+
+<div id="chat"></div>
+
+<script>
+async function ask() {
+    const query = document.getElementById("query").value;
+
+    const chat = document.getElementById("chat");
+
+    chat.innerHTML += `<p><b>You:</b> ${query}</p>`;
+
+    const res = await fetch(`/recommend?q=${encodeURIComponent(query)}`);
+    const data = await res.json();
+
+    chat.innerHTML += `<p><b>Agent:</b> ${data.response}</p>`;
+}
+</script>
+
+</body>
+</html>
