@@ -1,11 +1,13 @@
 services:
 
   # -------------------------
-  # FASTAPI (Your App)
+  # FASTAPI STOCK AGENT
   # -------------------------
   api:
     build: .
     container_name: stock-ai-api
+    env_file:
+      - .env
     ports:
       - "8000:8000"
     volumes:
@@ -18,8 +20,6 @@ services:
     depends_on:
       - chroma
       - ollama
-    env_file:
-      - .env
 
   # -------------------------
   # CHROMA VECTOR DB

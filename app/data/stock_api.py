@@ -1,7 +1,10 @@
 import requests
 from datetime import datetime
+from dotenv import load_dotenv
 
-API_KEY = "9O76DAEX0X9PA7ZY"
+load_dotenv()
+
+API_KEY = os.getenv("ALPHAVANTAGE_API_KEY")
 
 def get_stock_news(ticker: str):
     url = f"https://www.alphavantage.co/query"

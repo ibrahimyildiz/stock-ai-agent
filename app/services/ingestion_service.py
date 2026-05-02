@@ -12,7 +12,8 @@ def ingest_news(ticker: str):
     for i, article in enumerate(articles):
         texts.append(article["text"])
 
-        safe_date = article.get("date", "nodate")
+        safe_date = article["date"].replace(":", "-")
+
         metadatas.append({
             "ticker": article["ticker"],
             "source": article.get("source", "unknown"),
@@ -20,7 +21,6 @@ def ingest_news(ticker: str):
             "external_id": f"{ticker}_{safe_date}_{i}"
         })
 
-        #ids.append(f"{ticker}_{article['date']}_{i}")
         ids.append(str(uuid.uuid4()))
 
     add_documents(texts, metadatas, ids)

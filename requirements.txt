@@ -6,3 +6,4 @@ sentence-transformers
 chromadb
 scikit-learn
 rank-bm25
+python-dotenv

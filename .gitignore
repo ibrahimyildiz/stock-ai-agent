@@ -1,8 +1,19 @@
+# Environment
+.env
+.env.*
+venv/
+*.log
+
+# Python
 __pycache__/
 *.pyc
-.env
-venv/
-.env.*
+
+# Vector DB
 chroma_db/
-*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
 .DS_Store

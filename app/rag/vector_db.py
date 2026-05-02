@@ -12,15 +12,17 @@ def add_documents(texts, metadatas, ids):
         ids=ids
     )
 
-def query_documents(query, ticker=None, n_results=5):
+def query_documents(query, ticker=None):
+
+    query_params = {
+        "query_texts": [query],
+        "n_results": 5
+    }
+
+    # Apply metadata filter
     if ticker:
-        return collection.query(
-            query_texts=[query],
-            n_results=n_results,
-            where={"ticker": ticker}   # 🔥 THIS IS THE FIX
-        )
-    else:
-        return collection.query(
-            query_texts=[query],
-            n_results=n_results
-        )
+        query_params["where"] = {
+            "ticker": ticker
+        }
+
+    return collection.query(**query_params)
