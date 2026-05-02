@@ -1,25 +1,26 @@
 import chromadb
-from chromadb.config import Settings
 
-class VectorDB:
-    def __init__(self):
-        self.client = chromadb.PersistentClient(
-            path="/app/chroma_db"
-        )
+client = chromadb.PersistentClient(path="./chroma_db")
 
-        self.collection = self.client.get_or_create_collection(
-            name="stock_news"
-        )
+collection = client.get_or_create_collection("stock_news")
 
-    def add(self, texts, metadatas, ids):
-        self.collection.add(
-            documents=texts,
-            metadatas=metadatas,
-            ids=ids
-        )
 
-    def search(self, query, k=5):
-        return self.collection.query(
+def add_documents(texts, metadatas, ids):
+    collection.add(
+        documents=texts,
+        metadatas=metadatas,
+        ids=ids
+    )
+
+def query_documents(query, ticker=None, n_results=5):
+    if ticker:
+        return collection.query(
             query_texts=[query],
-            n_results=k
+            n_results=n_results,
+            where={"ticker": ticker}   # 🔥 THIS IS THE FIX
+        )
+    else:
+        return collection.query(
+            query_texts=[query],
+            n_results=n_results
         )

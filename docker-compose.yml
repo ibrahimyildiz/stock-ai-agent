@@ -1,0 +1,48 @@
+services:
+
+  # -------------------------
+  # FASTAPI (Your App)
+  # -------------------------
+  api:
+    build: .
+    container_name: stock-ai-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app/app
+      - ./chroma_db:/app/chroma_db
+    environment:
+      - CHROMA_HOST=chroma
+      - CHROMA_PORT=8000
+      - OLLAMA_HOST=http://ollama:11434
+    depends_on:
+      - chroma
+      - ollama
+    env_file:
+      - .env
+
+  # -------------------------
+  # CHROMA VECTOR DB
+  # -------------------------
+  chroma:
+    image: chromadb/chroma:latest
+    container_name: chroma-db
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+
+  # -------------------------
+  # OLLAMA LLM SERVER
+  # -------------------------
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
+volumes:
+  chroma_data:
+  ollama_data:

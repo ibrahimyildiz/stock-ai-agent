@@ -1,12 +1,13 @@
 # search logic
 
-from app.rag.vector_db import VectorDB
-
-db = VectorDB()
+from app.rag.vector_db import query_documents
+from app.utils.ticker_utils import extract_ticker
 
 def retrieve_context(query: str):
-    results = db.search(query)
+    ticker = extract_ticker(query)
+    results = query_documents(query, ticker=ticker)
 
-    docs = results.get("documents", [[]])[0]
+    documents = results.get("documents") or [[]]
+    docs = documents[0] if documents else []
 
     return docs

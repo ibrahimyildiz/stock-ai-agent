@@ -1,4 +1,5 @@
 import requests
+from datetime import datetime
 
 API_KEY = "9O76DAEX0X9PA7ZY"
 
@@ -17,11 +18,21 @@ def get_stock_news(ticker: str):
     articles = []
 
     for item in data.get("feed", [])[:5]:
+
+        raw_date = item.get("time_published", "")
+
+        date = None
+        if raw_date:
+            try:
+                date = datetime.strptime(raw_date, "%Y%m%dT%H%M%S").isoformat()
+            except:
+                date = raw_date  # fallback if format changes
+
         articles.append({
             "text": item["title"] + ". " + item.get("summary", ""),
             "ticker": ticker,
             "source": "alphavantage",
-            "date": item.get("time_published", "")
+            "date": date
         })
 
     return articles

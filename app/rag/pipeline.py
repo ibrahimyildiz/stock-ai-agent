@@ -2,6 +2,7 @@
 
 from app.rag.retriever import retrieve_context
 from app.core.llm import call_llm
+from app.llm.ollama_client import llm_generate
 
 def rag_pipeline(query: str):
     context = retrieve_context(query)
@@ -23,4 +24,4 @@ def rag_pipeline(query: str):
     - Confidence level (Low/Medium/High)
     """
 
-    return call_llm(prompt)
+    return llm_generate(prompt)
