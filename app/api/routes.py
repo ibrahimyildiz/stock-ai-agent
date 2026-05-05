@@ -1,28 +1,60 @@
-# API endpoints
+from fastapi import APIRouter, Body
+from pydantic import BaseModel
 
-from fastapi import APIRouter
-from fastapi import Body
+from app.core.container import Container
+from app.agents.graph import build_graph
+from app.data.stock_api import get_stock_news
 from app.services.stock_service import get_stock_recommendation
-from app.services.ingestion_service import ingest_news
 
 router = APIRouter()
 
-# --------------------
-# STOCK
-# --------------------
+container = None
+graph = None
+
+
+def get_container():
+    global container
+    if container is None:
+        container = Container()
+    return container
+
+
+def get_graph():
+    global graph
+    if graph is None:
+        graph = build_graph()
+    return graph
+
+
+class ChatRequest(BaseModel):
+    query: str
+
+
+# =========================
+# STOCK (legacy)
+# =========================
 @router.get("/recommend")
 def recommend(q: str):
-    result = get_stock_recommendation(q)
-    return {"response": result}
+    return {"response": get_stock_recommendation(q)}
 
-# --------------------
+
+# =========================
 # INGESTION
-# --------------------
+# =========================
 @router.post("/ingest")
 def ingest(payload: dict = Body(...)):
-    ticker = payload.get("ticker")
 
-    result = ingest_news(ticker)
+    container = get_container()
+
+    ticker = payload.get("ticker")
+    if not ticker:
+        return {"error": "ticker required"}
+
+    articles = get_stock_news(ticker)
+
+    result = container.ingestion_service.ingest_news(ticker, articles)
+
+    container.build_bm25()
 
     return {
         "status": "success",
@@ -30,72 +62,108 @@ def ingest(payload: dict = Body(...)):
         "count": result["ingested_items"]
     }
 
-# --------------------
-# DEBUG
-# --------------------
+
+# =========================
+# CHAT (MAIN)
+# =========================
+@router.post("/chat")
+async def chat_endpoint(request: ChatRequest):
+
+    graph = get_graph()
+
+    result = await graph.ainvoke({
+        "query": request.query
+    })
+
+    return result.get("final_output", result)
+
+
+# =========================
+# ANALYZE (alias)
+# =========================
+@router.get("/analyze")
+async def analyze_stock(query: str):
+
+    graph = get_graph()
+
+    result = await graph.ainvoke({
+        "query": query
+    })
+
+    return result.get("final_output", result)
+
+
+# =========================
+# DEBUG: VECTOR DB STATUS
+# =========================
 @router.get("/debug/db")
 def debug_db():
-    from app.rag.vector_db import collection
 
-    """
-    data = collection.get() # fetches all
-    data = collection.query(
-                query_texts=["apple earnings"],
-                n_results=5
-            )
-    """
-    data = collection.peek(3) # fetches only 3
+    try:
+        container = get_container()
+        collection = container.vector_store.collection
 
-    results = []
+        data = collection.peek(5)
 
-    for i in range(len(data.get("ids", []))):
-        results.append({
-            "id": data["ids"][i],
-            "document": data["documents"][i],
-            "metadata": data["metadatas"][i]
-        })
+        results = []
 
-    return {
-        "count": collection.count(),
-        "results": results
-    }
+        for i in range(len(data.get("ids", []))):
+            results.append({
+                "id": data["ids"][i],
+                "document": data["documents"][i],
+                "metadata": data["metadatas"][i]
+            })
 
+        return {
+            "count": collection.count(),
+            "results": results
+        }
+
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# =========================
+# DEBUG: FULL COLLECTION
+# =========================
 @router.get("/debug/full")
 def debug_full():
-    from app.rag.vector_db import collection
 
-    data = collection.get()
+    try:
+        container = get_container()
+        collection = container.vector_store.collection
 
-    return {
-        "ids": data.get("ids"),
-        "documents": data.get("documents"),
-        "metadatas": data.get("metadatas")
-    }
+        data = collection.get()
 
+        return {
+            "ids": data.get("ids", []),
+            "documents": data.get("documents", []),
+            "metadatas": data.get("metadatas", [])
+        }
+
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# =========================
+# DEBUG: RETRIEVAL TEST
+# =========================
 @router.get("/debug/retrieval")
 def debug_retrieval(query: str):
+
     try:
-        from app.rag.vector_db import query_documents
-        from app.utils.ticker_utils import extract_ticker
+        container = get_container()
 
-        ticker = extract_ticker(query)
-        results = query_documents(query, ticker=ticker)
-
-        documents = results.get("documents") or [[]]
-        metadatas = results.get("metadatas") or [[]]
-        ids = results.get("ids") or [[]]
-
-        docs = documents[0] if documents else []
-        metas = metadatas[0] if metadatas else []
-        id_list = ids[0] if ids else []
+        ticker = None
+        results = container.retriever.retrieve(query)
 
         output = []
 
-        for i in range(len(docs)):
+        for i, doc in enumerate(results):
             output.append({
-                "id": id_list[i] if i < len(id_list) else None,
-                "text": docs[i],
-                "metadata": metas[i] if i < len(metas) else {}
+                "index": i,
+                "text": getattr(doc, "page_content", str(doc)),
+                "metadata": getattr(doc, "metadata", {})
             })
 
         return {
@@ -110,11 +178,3 @@ def debug_retrieval(query: str):
             "error": str(e),
             "trace": traceback.format_exc()
         }
-
-# --------------------
-# CHAT
-# --------------------
-@router.post("/chat")
-def chat_endpoint(query: str):
-    from app.services.ollama_client import generate_response
-    return {"response": generate_response(query)}

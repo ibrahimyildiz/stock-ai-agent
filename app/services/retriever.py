@@ -1,33 +1,19 @@
-from app.services.ranker import rank_documents
-from app.services.bm25_retriever import BM25Retriever
+class Retriever:
 
+    def __init__(self, vector_store, bm25=None):
+        self.vector_store = vector_store
+        self.bm25 = bm25
 
-def retrieve_documents(vector_store, all_documents, query, k=5):
+    def retrieve(self, query: str, top_k: int = 20):
 
-    # Vector search
-    vector_docs = vector_store.similarity_search(query, k=10)
+        vector_docs = self.vector_store.similarity_search(query, k=top_k)
 
-    # BM25 search
-    bm25 = BM25Retriever(all_documents)
+        bm25_docs = []
+        if self.bm25:
+            bm25_docs = self.bm25.get_relevant_documents(query)[:top_k]
 
-    bm25_docs = bm25.search(query, k=10)
+        return self._merge(vector_docs, bm25_docs)
 
-    # Merge results
-    combined_docs = vector_docs + bm25_docs
-
-    # Remove duplicates
-    unique_docs = []
-
-    seen = set()
-
-    for doc in combined_docs:
-        content = doc.page_content
-
-        if content not in seen:
-            seen.add(content)
-            unique_docs.append(doc)
-
-    # Rank
-    ranked_docs = rank_documents(unique_docs, query)
-
-    return ranked_docs[:k]
+    def _merge(self, vector_docs, bm25_docs):
+        # simple MVP merge (you later upgrade to RRF)
+        return list({id(d): d for d in (vector_docs + bm25_docs)}.values())

@@ -1,31 +1,41 @@
-from app.data.stock_api import get_stock_news
-from app.rag.vector_db import add_documents
+from langchain_core.documents import Document
 import uuid
 
-def ingest_news(ticker: str):
-    articles = get_stock_news(ticker)
 
-    texts = []
-    metadatas = []
-    ids = []
+class IngestionService:
 
-    for i, article in enumerate(articles):
-        texts.append(article["text"])
+    def __init__(self, vector_store):
+        self.vector_store = vector_store
 
-        safe_date = article["date"].replace(":", "-")
+    def ingest_news(self, ticker: str, articles):
 
-        metadatas.append({
-            "ticker": article["ticker"],
-            "source": article.get("source", "unknown"),
-            "date": article.get("date", ""),
-            "external_id": f"{ticker}_{safe_date}_{i}"
-        })
+        documents = []
+        ids = []
+        metadatas = []
 
-        ids.append(str(uuid.uuid4()))
+        for i, article in enumerate(articles):
 
-    add_documents(texts, metadatas, ids)
+            doc = Document(
+                page_content=article.get("text", ""),
+                metadata={
+                    "ticker": article.get("ticker", ticker),
+                    "source": article.get("source", "unknown"),
+                    "date": article.get("date", ""),
+                    "external_id": f"{ticker}_{i}"
+                }
+            )
 
-    return {
-        "ingested_items": len(texts),
-        "ticker": ticker
-    }
+            documents.append(doc)
+            ids.append(str(uuid.uuid4()))
+            metadatas.append(doc.metadata)
+
+        self.vector_store.add_documents(
+            documents=documents,
+            ids=ids,
+            metadatas=metadatas
+        )
+
+        return {
+            "ingested_items": len(documents),
+            "ticker": ticker
+        }
